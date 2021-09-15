@@ -1,0 +1,106 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS SysOps Admin Course: CloudFormation Lab",
+    "Resources": {
+        "S3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+               
+            }
+        },
+        "ALambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:PutObject",
+                                        "s3:ListBucket"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:s3:::*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "LambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": [
+                "S3Bucket", "ALambdaRole"
+            ],
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "cloudassessments-lab-files",
+                    "S3Key": "aws/s3/lambda_cf_download_script/generic-file-download-lambda-2-files.zip"
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ALambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Description": "Download music manager static app ",
+                "Timeout": 15,
+                "Handler": "index.lambda_handler",
+                "Runtime": "python2.7",
+                "MemorySize": 512
+            }
+        },
+        "DownloadFileCustomResource": {
+            "DependsOn": ["LambdaFunction"],
+            "Type": "Custom::DownloadFile",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "LambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "BucketName": {
+                    "Ref": "S3Bucket"
+                },
+                "FileDownloadPath1": "https://s3.amazonaws.com/cloudassessments-lab-files/aws/s3/aws_sysops_deploying_app_with_cloudformation+/CF_WordPress_Blog.json",
+                "NameOfFile1": "CF_WordPress_Blog.json",
+                "FileDownloadPath2": "https://s3.amazonaws.com/cloudassessments-lab-files/aws/s3/aws_sysops_deploying_app_with_cloudformation+/CF_WordPress_Blog.yml",
+                "NameOfFile2": "CF_WordPress_Blog.yml"
+            }
+        }
+    }
+}

@@ -1,0 +1,6 @@
+# Learning Objectives
+
+1. Create an RDS Snapshot
+1. Log in to the Bastion and Delete Database Data
+1. Restore an RDS Database from a Snapshot
+1. Rename Database Instances

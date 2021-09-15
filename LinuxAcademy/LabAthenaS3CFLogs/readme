@@ -1,0 +1,92 @@
+# Learning Objectives
+
+## 1. Create a Table from S3 Bucket Metadata
+
+Navigate to Amazon Athena, Click on "Connect data source" in the left navigation; on the right side of Data Source, then make sure to select "Query data in Amazon S3" for where the data is located. Also select "AWS Glue data catalog" for the metadata catalog and click "Next". Then we will select the "Add a table and enter schema info manually." Then the choice will update to "Continue to add table." After that add the db name, Table name, and s3 URL
+
+Database: aws_service_logs
+Table: cf_access_optimized
+Location: s3://Name of the generated S3 bucket/ (including trailing slash)
+
+Data Format   - Select Parquet  
+Columns  - Bulk add columns using this data:
+
+```time timestamp, location string, bytes bigint, requestip string, method string, host string, uri string, status int, referrer string, useragent string, querystring string, cookie string, resulttype string, requestid string, hostheader string, requestprotocol string, requestbytes bigint, timetaken double, xforwardedfor string, sslprotocol string, sslcipher string, responseresulttype string, httpversion string ```
+
+Partitions  
+Column Name: year, Column Type: string  
+Column Name: month, Column Type: string  
+Column Name: day, Column Type: string  
+
+Click Create table  
+Click Run query on the generated SQL statement. Ensure the S3 bucket location in the query matches the one generated in your lab environment.
+
+## 2. Add Partition Metadata
+
+Open a new query tab, run the following query:
+
+```MSCK REPAIR TABLE aws_service_logs.cf_access_optimized```
+
+Verify the partitions were created with the following query:  
+
+```SELECT count(*) AS rowcount FROM aws_service_logs.cf_access_optimized```
+
+You should see 207535 rows present in the table.
+
+Run the following query:
+
+```SELECT * FROM aws_service_logs.cf_access_optimized LIMIT 10```
+
+```select * from aws_service_logs.cf_access_optimized order by time desc limit 10```
+
+## 3. Query the Total Bytes Served in a Date Range
+
+Perform the following query:
+
+```SELECT SUM(bytes) AS total_bytes FROM aws_service_logs.cf_access_optimized WHERE time BETWEEN TIMESTAMP '2018-11-02' AND TIMESTAMP '2018-11-03'```
+
+Observe the value for total_bytes equals 87310409.
+
+
+## 4. Generate Create Table DDL
+```
+CREATE EXTERNAL TABLE `cf_access_optimized`(
+  `time` timestamp, 
+  `location` string, 
+  `bytes` bigint, 
+  `requestip` string, 
+  `method` string, 
+  `host` string, 
+  `uri` string, 
+  `status` int, 
+  `referrer` string, 
+  `useragent` string, 
+  `querystring` string, 
+  `cookie` string, 
+  `resulttype` string, 
+  `requestid` string, 
+  `hostheader` string, 
+  `requestprotocol` string, 
+  `requestbytes` bigint, 
+  `timetaken` double, 
+  `xforwardedfor` string, 
+  `sslprotocol` string, 
+  `sslcipher` string, 
+  `responseresulttype` string, 
+  `httpversion` string)
+PARTITIONED BY ( 
+  `year` string, 
+  `month` string, 
+  `day` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+  's3://cfst-1918-1cc104ec4563b046d1309bf1377ca8-s3bucket-1plwq2gak6cxa/'
+TBLPROPERTIES (
+  'has_encrypted_data'='false', 
+  'transient_lastDdlTime'='1597615020')
+  ```

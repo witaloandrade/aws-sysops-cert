@@ -1,0 +1,102 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Managing Data in S3 with Versioning and Lifecycle Rules",
+    "Resources": {
+        "S3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {}
+        },
+        "ALambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:PutObject",
+                                        "s3:ListBucket"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:s3:::*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "LambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": "S3Bucket",
+            "Properties": {
+                "Code": {
+                    "ZipFile": "import urllib.request\n\nimport boto3\nimport cfnresponse\n\ns3 = boto3.client('s3')\n\n\ndef lambda_handler(event, context):\n    response_data = {}\n    response_data['Data'] = None\n\n    if event['RequestType'] != 'Create':\n        cfnresponse.send(event, context, cfnresponse.SUCCESS,\n                        response_data, \"CustomResourcePhysicalID\")\n        return\n\n    bucket = event['ResourceProperties']['BucketName']\n\n    # Download and upload file 1\n    file_download_path = event['ResourceProperties']['FileDownloadPath1']\n    name_of_file = event['ResourceProperties']['NameOfFile1']\n    urllib.request.urlretrieve(file_download_path, \"/tmp/file\")\n\n    if s3.upload_file('/tmp/file', bucket, name_of_file):\n        print(\"Successfully uploaded File1\")\n\n    # Download and upload file 2\n    file_download_path = event['ResourceProperties']['FileDownloadPath2']\n    name_of_file = event['ResourceProperties']['NameOfFile2']\n    urllib.request.urlretrieve(file_download_path, \"/tmp/file\")\n\n    if s3.upload_file('/tmp/file', bucket, name_of_file):\n        print(\"Successfully uploaded File2\")\n\n    # Download and upload file 3\n    file_download_path = event['ResourceProperties']['FileDownloadPath3']\n    name_of_file = event['ResourceProperties']['NameOfFile3']\n    urllib.request.urlretrieve(file_download_path, \"/tmp/file\")\n\n    if s3.upload_file('/tmp/file', bucket, name_of_file):\n        print(\"Successfully uploaded File3\")\n\n    cfnresponse.send(event, context, cfnresponse.SUCCESS,\n                    response_data, \"CustomResourcePhysicalID\")\n"
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ALambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Description": "CloudFormation custom resource",
+                "Timeout": 15,
+                "Handler": "index.lambda_handler",
+                "Runtime": "python3.7",
+                "MemorySize": 512
+            }
+        },
+        "DownloadFileCustomResource": {
+            "Type": "Custom::DownloadFile",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "LambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "BucketName": {
+                    "Ref": "S3Bucket"
+                },
+                "FileDownloadPath1": "https://raw.githubusercontent.com/linuxacademy/content-aws-soa-c01/master/lab-s3-versioning-lifecycle-rules/2018.csv",
+                "NameOfFile1": "Logs/2018.csv",
+                "FileDownloadPath2": "https://raw.githubusercontent.com/linuxacademy/content-aws-soa-c01/master/lab-s3-versioning-lifecycle-rules/2019.csv",
+                "NameOfFile2": "Logs/2019.csv",
+                "FileDownloadPath3": "https://raw.githubusercontent.com/linuxacademy/content-aws-soa-c01/master/lab-s3-versioning-lifecycle-rules/Image1.png",
+                "NameOfFile3": "Images/Image1.png"
+            }
+        }
+    }
+}

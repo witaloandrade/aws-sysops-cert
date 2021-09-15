@@ -1,0 +1,8 @@
+# ELB
+SurgeQueueLength & SpilloverCount
+
+The Classic Load Balancer metric SurgeQueueLength measures the total number of requests queued by your Classic Load Balancer. An increased maximum statistic for SurgeQueueLength indicates that backend systems aren't able to process incoming requests as fast as the requests are received. When requests exceed the maximum SurgeQueueLength, the SpilloverCount metric starts to measure rejected requests. The maximum SurgeQueueLength is 1024. Reference: How do I troubleshoot Classic Load Balancer capacity issues in ELB?
+
+# Storage Exam
+
+The storage classes S3 Standard, S3 Glacier, and S3 Glacier Deep Archive are all designed for 99.99% availability. S3 Intelligent-Tiering and S3 Standard-IA are designed for 99.9% availability, and S3 One Zone-IA is designed for 99.5% availability. Reference: Performance across the S3 Storage Classes.

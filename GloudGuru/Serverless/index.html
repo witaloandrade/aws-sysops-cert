@@ -1,0 +1,27 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf8" />
+<!--No campo "Título da página", digite o título da sua página-->
+<title>Serverless Site</title>
+</head>
+<script>
+
+function myFunction() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+        document.getElementById("my-demo").innerHTML = this.responseText;
+        }
+    };
+    xhttp.open("GET", "https://o8sdnmy9x3.execute-api.sa-east-1.amazonaws.com/prod/HelloCloudGurus", true);
+    xhttp.send();
+
+}
+
+</script>
+<body><div align="center"><br><br><br><br>
+<h1>Olá <span id="my-demo"> </span></h1>
+<button onclick="myFunction()">Clique no Botão</button><br>
+<img src="https://s3.eu-west-2.amazonaws.com/gocertsbr-euwest2/19657164_1424882097592718_6635924938745892644_n.jpg"></div>
+</body>
+</html>

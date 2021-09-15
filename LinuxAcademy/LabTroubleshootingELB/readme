@@ -1,0 +1,9 @@
+# Troubleshooting Amazon EC2 Network Connectivity
+
+## Learning Objectives
+
+1. The ELB's security group does not allow HTTP traffic.  
+Add an allow rule for HTTP traffic (port 80) to the ELB's security group.
+
+1. EC2 instance health checks are not passing.  
+Change health check "ping port" on the ELB to port 80.

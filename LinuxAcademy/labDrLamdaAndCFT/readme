@@ -1,0 +1,31 @@
+Learning Objectives
+
+Review the Disaster Recovery Plan
+Review the basics of Disaster Recovery in AWS including:
+Disaster Recovery Strategies
+Recovery Time Objective (RTO) and Recovery Point Objective (RPO)
+Examine a demo cross-region DR Plan using Backup and Restore with CloudFormation
+
+Implement and Test the Disaster Recovery Plan
+Verify the CF_WordPress_Blog CloudFormation template is in your S3 bucket.
+Launch the template in the Production region (us-east-1).
+Review the new stack and the resources created.
+Review the Outputs tab of the CloudFormation stack.
+
+Add and Test the Lambda AMI Lookup Function
+Copy the code for the Lamdba AMI Lookup function (amilookup.zip) to an S3 bucket.
+Copy the 1-CF_WordPress_Blog_with_Lookup CloudFormation template to an S3 bucket.
+Copy the 2-Add_Single_Instance CloudFormation template to an S3 bucket.
+Examine both CloudFormation templates:
+Note the Cross Stack Reference
+Launch the 1-CF_WordPressBlog_with_Lookup template in the Disaster Recovery region:
+For this lab, also use us-east-1 for DR.
+Examine the Outputs tab of the new stack.
+Launch the 2-Add_Single_Instance template:
+Use the same region as in the previous step.
+Examine the newly created EC2 instance:
+Note which VPC is in use.
+
+
+Click here to download lab files
+https://github.com/linuxacademy/content-simple-dr-cf-lambda

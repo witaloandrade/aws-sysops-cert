@@ -1,0 +1,21 @@
+Pending LABs:
+Chapter 2.2
+
+
+
+# Introduction
+
+- Read Exam Blue Print
+- Read White Papers
+- AWS Study guide - Paid
+
+# Monitoring & Reporting
+
+AWS Host Level Metrics - CPU, Network, Disk, Status Check
+Custom metrics minimum granularity is 1 minute
+You can retrieve data from terminated ec2 or elb 
+Default monitoring is every 5 minutes, detailed is every 1min
+
+Cloud watch agent can be installed on premises, needs to install cloud watch agent
+AWS GetMetricStatistics API to get cloud watch GetMetricStatistics
+By Default aws stores cloud watch metrics indefinitely but it is possible to change it

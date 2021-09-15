@@ -1,0 +1,57 @@
+Introduction
+Recovering AWS workloads after a disaster is a crucial skill for organizations using the AWS cloud. This requires creating strategies and testing Disaster Recovery (DR) plans and techniques.
+
+CloudFormation offers a simple solution that can help with DR over the long term, and helps with working toward implementing more advanced strategies.
+
+One problem, however, is that AMI ID numbers can change over time, and vary from region to region. Adding a simple Lambda function to the strategy can automate and fix the issue.
+
+In This Lab You Will:
+Explore disaster recovery strategies including:
+Backup and Restore
+Pilot Light
+Warm Standby
+Multi-site
+Use a CloudFormation template to restore a production AWS environment.
+Examine a Lambda function and a CloudFormation Cross Stack Reference that can automate looking up current AMI ID numbers for launching resources in the correct VPC.
+Use a modified CloudFormation template with Lambda to launch an additional EC2 instance.
+The Scenario
+You’ve just taken over responsibility for an AWS workload consisting of an application (WordPress) running on EC2. There is currently no Disaster Recovery plan for this environment. In this lab, you will evaluate and test the use of a CloudFormation template to recreate the needed infrastructure in the event of a disaster. You will also further automate the process by adding a Lambda function that will lookup current AMI ID numbers and provide them to the CloudFormation template.
+
+Click here to download lab files (These files are stored in a GitHub repository; clicking on the Download button will allow you to download a ZIP file containing the necessary lab files. You'll need to open the ZIP file to extract the individual files before uploading them to S3)
+
+Logging In
+Use the credentials provided on the hands-on lab overview page, and log into the AWS console as cloud_user.
+
+Create a Key Pair
+In the AWS console, navigate to EC2, and then to Key Pairs (down a bit in the left hand menu). Once in there, click Create key pair. Give it a name in the next screen (DR_Lab_Keys should work), and leave the File format set to pem. Click on the Create key pair button. The browser should automatically download the file, and we'll just leave that for later in our downloads folder.
+
+Download CloudFormation Templates
+Now we can navigate to S3 in the AWS Console. If we click into the one that the lab environment created for us, we'll see a couple of files in there already. They're both CloudFormation templates that do the same thing, but one is written in JSON and the other in YAML.
+
+Upload Files to the S3 Bucket
+Remember the lab files we grabbed from GitHub? They came down as a zip, so once they're extracted on our local machine, we're going to upload those to this S3 bucket. In the same S3 window where we saw the JSON and YAML files, click the Upload button. Click Add files on the next window, then navigate to where we extracted the GitHub zip file. We want to upload 1-CF_WordPress_Blog_with_Lookup.json, 2-Add_Single_Instance.json, and amilookup.zip. So for each, click on it, then the Open button, and then repeat the process until all three are up in the bucket.
+
+Set up the Environment
+Click on CF_Wordpress_Blog.json, (Found in your lab provided S3 Bucket) and copy the Object URL at the bottom of the next screen. This file is the CloudFormation template we'll use to create the environment.
+
+In a new browser tab, because we'll be swapping back and forth quite a bit, navigate to CloudFormation in the AWS console.There is one stack in there already, but we want to create another one. Click Create stack and choose With new resources (standard) from the dropdown. Down in the Specify template section, paste in the S3 URL that we copied a little while ago. Click the Next button, then click it again. On the next screen give this a Stack name of ProdEnv. Choose our DR_Lab_Keys from the WebServerKeyName dropdown below that. Click Next again, and yet again on the following screen. On this last screen, click Create stack.
+
+We'll land out on the Stack details page, and here we can hit the refresh button down in the Events pane. As we refresh, we'll see the different things that our template is doing.
+
+Once everything is finished, we'll see a CREATE_COMPLETE message for our ProdEnv stack.
+
+Disaster Strikes
+We're going to simulate a disaster, so that we can practice recovering from it. Looking at the stack we just created, hit the Delete button (near the top of the window), and then click Delete stack in the pop up that we get. Press the same refresh button that we did before (in the Events section) to see things as they happen. Eventually, we'll see that the stack has ceased to be.
+
+Relaunch the Stack
+Let's get back into the original S3 bucket, and click on 1-CF_Wordpress_Blog_with_Lookup.json. Just like the last time we did this, copy the Object URL, then navigate to CloudFormation. Click Create stack and choose With new resources (standard) from the dropdown. Down in the Specify template section, paste in the S3 URL we just copied. Click Next twice. On the next screen, give the stack a name on the next screen (let's call it DR-Env), choose our DR_Lab_Keys from the WebServerKeyName dropdown, then click Next. Click Next on the following Configure stack options screen, and then on the final screen click Create Stack.
+
+Just like last time, we can watch the Events tab (hitting the refresh button occasionally) and see the stack come up. Once we see a CREATE_COMPLETE message for DR-Env, we can move on.
+
+Add an EC2 Instance to the Stack
+First, back in our original S3 bucket, get into the 2-Add_Single_Instance.json, and copy the Object URL. Back in CloudFormation, we're going to create a new stack. Click Create stack and choose With new resources (standard) from the dropdown. Down in the Specify template section, paste in this third S3 URL we copied, then click Next. We'll name this one SingleInstance, set the InstanceType to t2.micro. The ModuleName should already be populated with amilookup. Put the name of our original S3 bucket in the S3Bucket field (which we can grab by getting into that bucket and copying the name). The S3Key field should already be populated with amilookup.zip. Once these are filled in, we can click Next.
+
+We'll scroll down on the following page and click Next. On this final screen, we have to check a box acknowledging that AWS CloudFormation might create IAM resources. Then we can click Create stack. Just like with the other stacks, we can keep refreshing in the Events tab to watch things spin up.
+
+Conclusion
+We were able to simulate a disaster, then quickly recover using CloudFormation templates. Congratulations

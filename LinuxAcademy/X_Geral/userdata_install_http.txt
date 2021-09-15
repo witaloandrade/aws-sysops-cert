@@ -1,0 +1,8 @@
+#!/bin/bash -xe
+sudo yum update -y
+sudo yum install -y httpd wget
+sudo echo "<html><body><h1>Let's get Certified</h1></body></html>" > /var/www/html/index.html
+aws_instance=$(wget -q -O- http://169.254.169.254/latest/meta-data/instance-id)
+sudo echo  $aws_instance >> /var/www/html/index.html
+sudo service httpd start
+sudo chkconfig httpd on

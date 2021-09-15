@@ -1,0 +1,40 @@
+# Learning Objectives
+
+1. Enable multi-AZ deployment on the primary RDS database.
+
+Navigate to EC2 > Load Balancers.
+Copy the DNS name of the load balancer.
+Open a new browser tab, and enter the DNS name. We will use this web page to test failovers and promotions in this lab.
+Navigate to RDS > Databases.
+Click on our database instance.
+Click Modify.
+Click Yes for Multi-AZ deployment.
+Change Backup Retention to 1 day, needed later for read replicas.
+Click Continue.
+Click Apply immediately, and then Modify DB Instance.
+Once the instance shows Multi-AZ is enabled, reboot the primary.
+Use the web page to monitor the outage (normally about 30 seconds).
+The Multi-AZ standby is now the primary.
+
+2. Create a read replica of the RDS database.
+
+Check the circle beside the database instance.
+Click Actions.
+Choose Create read replica.
+Choose US East (N. Virginia) for destination region.
+Enter a name.
+Choose Create read replica.
+
+3. Promote the Read Replica and Change the CNAME Records Set in Route 53 to the New Endpoint
+
+Promote the read replica to be the primary database. In addition, you need to alter the CNAME DNS record set in Route 53 to now point to the new primary database's endpoint.
+
+Once the read replica is available, check the circle next to it.
+Click Actions.
+Choose Promote.
+Click Continue, and then Promote Read Replica.
+Use the web page to monitor for downtime.
+Once the read replica is available, copy the endpoint.
+Open Route 53 in a new tab.
+Edit the database.sysopsdatabase.com record to use the read replica endpoint.
+Monitor using the web page for downtime.

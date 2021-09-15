@@ -1,0 +1,124 @@
+Additional Information and Resources
+Please go ahead and log in to the live environment with the cloud_user credentials provided.
+
+Make sure you are using N. Virginia (us-east-1) as your region throughout the lab.
+
+Database Snapshot ARN: arn:aws:rds:us-east-1:892710030684:snapshot:sysops-certification-la-course
+
+Database Name: wordpressdb (not wordpress)
+Username: wpuser
+Password: Password1
+Database Host: Use the RDS endpoint name
+Table prefix: wp_
+The user data script for the web server launch configuration is here.
+
+Attention: When selecting the AMI for your bastion host and instance for your web app, please use the Amazon Linux 2 AMI.
+
+#########
+Learning Objectives
+
+Launch an RDS Database
+Launch an RDS database using the provided RDS backup image (which contains the WordPress site data).
+
+Navigate to the RDS console.
+Click Subnet Groups.
+Click Create DB Subnet Group.
+Add a name (sng1), description, and add the DB subnets: 10.99.21.0/24 and 10.99.22.0/24.
+Click Create.
+Click Snapshots in the left menu.
+Copy in the snapshot ARN provided in the lab instructions, and change the dropdown to All public snapshots.
+Check the box next to the snapshot, and choose Restore Database from the dropdown.
+Choose: t2.micro, and a DB instance identifier (wordpress-database), and subnet group (sng1).
+Accept all other defaults.
+Click Restore DB Instance. This may take 10–15 minutes to complete.
+
+Create Security Groups
+Navigate to VPC.
+Create four security groups with inbound rules:
+BastionSG (SSH from 0.0.0.0/0)
+LoadBalancerSG (HTTP and HTTPS from 0.0.0.0/0)
+WebServerSG (SSH from BastionSG and HTTP/HTTPS from LoadBalancerSG)
+DatabaseSG (MySQL from WebServerSG)
+
+Create Launch Configurations and Auto Scaling Groups
+Create two Auto Scaling groups: one for the bastion host and one for the application servers.
+
+Create First Auto Scaling Group
+Create Launch Configuration
+Navigate to the EC2 page.
+Choose Auto Scaling Groups from the left menu.
+Click Create Auto Scaling group, and then Create launch configuration.
+Click Select beside Amazon Linux 2 AMI.
+Leave t2.micro chosen, and click Next: Configure details.
+Add a name: BastionLC.
+Change IP Address Type to Assign a public IP address to every instance.
+Click Next: Add storage.
+Click Next: Configure Security Group.
+Choose the existing BastionSG.
+Click Review, and then Create launch configuration.
+Create and download a new key pair.
+Create Auto Scaling Group
+On the Create Auto Scaling Group page, enter a group name of BastionASG, start with 1 instance, choose SysOps VPC, and add both DMZ subnets.
+Click Next: Configure scaling policies.
+Select Keep group at its initial size, and click Review.
+Click Create Auto Scaling group, and then Close.
+Create Second Auto Scaling Group
+Create Launch Configuration
+Choose Launch Configurations from the left menu.
+Click Create Auto Scaling group, and then Create launch configuration.
+Click Select beside Amazon Linux 2 AMI.
+Leave t2.micro chosen, and click Next: Configure details.
+Add a name: WebServerLC.
+Click Advanced Details, and copy in the user data for the WordPress instance host using the script here.
+Change IP Address Type to Do not assign...
+Click Next: Add storage.
+Click Next: Configure Security Group.
+Choose the existing WebServerSG.
+Click Review, and then click Create launch configuration.
+Use the same key pair.
+Click Create launch configuration.
+Create Auto Scaling Group
+On the Create Auto Scaling Group page, enter a group name of WebServerASG, start with 2 instances, choose SysOps VPC, and add both AppLayer subnets.
+Click Next: Configure scaling policies.
+Select Keep group at its initial size, and click Review.
+Click Create Auto Scaling group, and then Close.
+View EC2 instances to see one bastion and two web servers are pending or running.
+
+Modify Database Security Groups and Create an Application Load Balancer
+Create an application ELB that distributes traffic to the application servers.
+
+Modify the Database Security Group
+Navigate to the RDS console.
+Modify the RDS instance to use the database security group you created.
+Click Continue.
+Check Apply Immediately, and then Modify DB Instance.
+Create an Application Load Balancer
+Navigate to EC2, and then Load Balancers.
+Click Create Load Balancer.
+On Application Load Balancer, click Create.
+Add a name of ALB1, choose SysOps VPC, and add the 2 DMZ subnets.
+Choose Next: Configure Security Settings.
+Choose Next: Configure Security Groups.
+Choose the existing load balancer security group you configured.
+Choose Next: Configure Routing.
+Name the target group TG1, and change the path to /readme.html.
+Click Next: Register Targets.
+Click Next: Review, and then Create.
+Modify Auto Scaling Group
+Navigate to Auto Scaling Groups.
+Edit the web server Auto Scaling group to add the target group.
+Click Save.
+
+Browse Web Application
+Navigate to the RDS console.
+Click the database instance.
+Note the endpoint name (e.g., wordpress-database.clei7j95opir.us-east-1.rds.amazonaws.com).
+Navigate to Load Balancers.
+Note the DNS name, and browse to it.
+Configure WordPress:
+Database Name: wordpressdb (not wordpress)
+Username: wpuser
+Password: Password1
+Database Host: Use the RDS endpoint name
+Table prefix: wp_
+

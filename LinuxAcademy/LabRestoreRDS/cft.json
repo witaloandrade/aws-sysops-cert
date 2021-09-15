@@ -1,0 +1,785 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Restoring an Amazon RDS Instance using Snapshots",
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "10.99.0.0/16",
+                "EnableDnsHostnames": "true",
+                "EnableDnsSupport": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "SysOpsVPC"
+                    }
+                ]
+            }
+        },
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {}
+        },
+        "VPCGatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "DMZ1public": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": "10.99.1.0/24",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "DMZ1public"
+                    }
+                ]
+            }
+        },
+        "DMZ2public": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "1",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": "10.99.2.0/24",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "DMZ2public"
+                    }
+                ]
+            }
+        },
+        "AppLayer1private": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": "10.99.11.0/24",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "AppLayer1private"
+                    }
+                ]
+            }
+        },
+        "AppLayer2private": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "1",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": "10.99.12.0/24",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "AppLayer2private"
+                    }
+                ]
+            }
+        },
+        "DBLayer1private": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": "10.99.21.0/24",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "DBLayer1private"
+                    }
+                ]
+            }
+        },
+        "DBLayer2private": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "1",
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": "10.99.22.0/24",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "DBLayer2Private"
+                    }
+                ]
+            }
+        },
+        "PublicRT": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "PublicRT"
+                    }
+                ]
+            }
+        },
+        "RouteTableAssociationA": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "DMZ1public"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRT"
+                }
+            }
+        },
+        "RouteTableAssociationB": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "DMZ2public"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRT"
+                }
+            }
+        },
+        "RoutePublicNATToInternet": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRT"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            },
+            "DependsOn": "VPCGatewayAttachment"
+        },
+        "NATElasticIP": {
+            "Type": "AWS::EC2::EIP",
+            "Properties": {
+                "Domain": "vpc"
+            },
+            "DependsOn": "VPCGatewayAttachment"
+        },
+        "NATGateway": {
+            "Type": "AWS::EC2::NatGateway",
+            "DependsOn": "NATElasticIP",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "NATElasticIP",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId": {
+                    "Ref": "DMZ2public"
+                }
+            }
+        },
+        "NATGatewayRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRT"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NATGateway"
+                }
+            }
+        },
+        "PrivateRT": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "PrivateRT"
+                    }
+                ]
+            }
+        },
+        "RouteTableAssociationC": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "AppLayer1private"
+                },
+                "RouteTableId": {
+                    "Ref": "PrivateRT"
+                }
+            }
+        },
+        "RouteTableAssociationD": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "AppLayer2private"
+                },
+                "RouteTableId": {
+                    "Ref": "PrivateRT"
+                }
+            }
+        },
+        "RouteTableAssociationE": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "DBLayer1private"
+                },
+                "RouteTableId": {
+                    "Ref": "PrivateRT"
+                }
+            }
+        },
+        "RouteTableAssociationF": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "DBLayer2private"
+                },
+                "RouteTableId": {
+                    "Ref": "PrivateRT"
+                }
+            }
+        },
+        "LoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "Subnets": [
+                    {
+                        "Ref": "DMZ1public"
+                    },
+                    {
+                        "Ref": "DMZ2public"
+                    }
+                ],
+                "Name": "load-balancer",
+                "Type": "application",
+                "Scheme": "internet-facing",
+                "SecurityGroups": [
+                    {
+                        "Ref": "LoadBalancerSecurityGroup"
+                    }
+                ],
+                "IpAddressType": "ipv4"
+            }
+        },
+        "Listener": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "DefaultActions": [
+                    {
+                        "Type": "forward",
+                        "TargetGroupArn": {
+                            "Ref": "TargetGroup"
+                        }
+                    }
+                ],
+                "LoadBalancerArn": {
+                    "Ref": "LoadBalancer"
+                },
+                "Port": "80",
+                "Protocol": "HTTP"
+            }
+        },
+        "TargetGroup": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "HealthCheckIntervalSeconds": "10",
+                "HealthCheckPath": "/readme.html",
+                "HealthCheckPort": "80",
+                "HealthCheckProtocol": "HTTP",
+                "HealthyThresholdCount": "2",
+                "Name": "TG1",
+                "Port": "80",
+                "Protocol": "HTTP",
+                "UnhealthyThresholdCount": "2",
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "StudentEC2InstanceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Path": "/"
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "StudentEC2InstancePolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "cloudwatch:*",
+                                "events:*",
+                                "ec2:*",
+                                "rds:*",
+                                "s3:*",
+                                "elasticloadbalancing:*",
+                                "autoscaling:*",
+                                "sns:*",
+                                "route53domains:*",
+                                "route53:*"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "PolicyName": "StudentEC2InstancePolicy",
+                "Roles": [
+                    {
+                        "Ref": "StudentEC2InstanceRole"
+                    }
+                ]
+            }
+        },
+        "WebInstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": [
+                    {
+                        "Ref": "StudentEC2InstanceRole"
+                    }
+                ]
+            }
+        },
+        "BastionSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "wordpress-bastion",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "BastionSG"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 22,
+                        "IpProtocol": "tcp",
+                        "ToPort": 22
+                    }
+                ]
+            }
+        },
+        "LoadBalancerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "wordpress-elb",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "LoadBalancerSG"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 80,
+                        "IpProtocol": "tcp",
+                        "ToPort": 80
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 443,
+                        "IpProtocol": "tcp",
+                        "ToPort": 443
+                    }
+                ]
+            }
+        },
+        "WebServerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "wordpress-ec2",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "WebServerSG"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "FromPort": 22,
+                        "IpProtocol": "tcp",
+                        "SourceSecurityGroupId": {
+                            "Ref": "BastionSecurityGroup"
+                        },
+                        "ToPort": 22
+                    },
+                    {
+                        "FromPort": 80,
+                        "IpProtocol": "tcp",
+                        "SourceSecurityGroupId": {
+                            "Ref": "LoadBalancerSecurityGroup"
+                        },
+                        "ToPort": 80
+                    }
+                ]
+            }
+        },
+        "DatabaseSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "wordpress-rds",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "DatabaseSG"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3306",
+                        "ToPort": "3306",
+                        "SourceSecurityGroupId": {
+                            "Ref": "WebServerSecurityGroup"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3306",
+                        "ToPort": "3306",
+                        "SourceSecurityGroupId": {
+                            "Ref": "BastionSecurityGroup"
+                        }
+                    }
+                ]
+            }
+        },
+        "DBSubnetGroup": {
+            "Type": "AWS::RDS::DBSubnetGroup",
+            "Properties": {
+                "DBSubnetGroupDescription": "DB subnet group",
+                "SubnetIds": [
+                    {
+                        "Ref": "DBLayer1private"
+                    },
+                    {
+                        "Ref": "DBLayer2private"
+                    }
+                ]
+            }
+        },
+        "Database": {
+            "Type": "AWS::RDS::DBInstance",
+            "Metadata": {
+                "Comment": "DB snapshot is shared in account 8927-1003-0684 lab_snapshot_ca"
+            },
+            "Properties": {
+                "AllocatedStorage": "20",
+                "BackupRetentionPeriod": "35",
+                "DBInstanceClass": "db.t2.medium",
+                "DBInstanceIdentifier": "wordpress-database",
+                "Engine": "MySQL",
+                "DBSnapshotIdentifier": "arn:aws:rds:us-east-1:892710030684:snapshot:sysops-certification-la-course",
+                "MasterUsername": "wpuser",
+                "MasterUserPassword": "Password1",
+                "VPCSecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "DatabaseSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "DBSubnetGroupName": {
+                    "Ref": "DBSubnetGroup"
+                },
+                "MultiAZ": "false",
+                "StorageType": "gp2"
+            }
+        },
+        "LaunchConfiguration": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "DependsOn": [
+                "VPCGatewayAttachment"
+            ],
+            "Properties": {
+                "ImageId": "ami-07e677d445d41baeb",
+                "InstanceType": "t2.micro",
+                "IamInstanceProfile": {
+                    "Ref": "WebInstanceProfile"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "WebServerSecurityGroup"
+                    }
+                ],
+                "AssociatePublicIpAddress": "false",
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash\n",
+                                "yum update -y\n",
+                                "yum install -y httpd24 php70 mysql php70-mysqlnd git\n",
+                                "cd /var/www/html\n",
+                                "git clone https://github.com/linuxacademy/content-aws-sysops-administrator.git\n",
+                                "cd content-aws-sysops-administrator/wp-site/\n",
+                                "mv * /var/www/html\n",
+                                "sudo sed -i -e 's/database\\.sysopsdatabase\\.com/",
+                                {
+                                    "Fn::GetAtt": [
+                                        "Database",
+                                        "Endpoint.Address"
+                                    ]
+                                },
+                                "/g' /var/www/html/wp-config.php\n",
+                                "echo \"define('WP_HOME','http://",
+                                {
+                                    "Fn::GetAtt": [
+                                        "LoadBalancer",
+                                        "DNSName"
+                                    ]
+                                },
+                                "');\" >> /var/www/html/wp-config.php\n",
+                                "echo \"define('WP_SITEURL','http://",
+                                {
+                                    "Fn::GetAtt": [
+                                        "LoadBalancer",
+                                        "DNSName"
+                                    ]
+                                },
+                                "');\" >> /var/www/html/wp-config.php\n",
+                                "mysql -u wpuser --password=Password1 --host=",
+                                {
+                                    "Fn::GetAtt": [
+                                        "Database",
+                                        "Endpoint.Address"
+                                    ]
+                                },
+                                " -D wordpressdb <<<\"update wp_options set option_value=replace(option_value,'sysopscodex.com','",
+                                {
+                                    "Fn::GetAtt": [
+                                        "LoadBalancer",
+                                        "DNSName"
+                                    ]
+                                },
+                                "');\"\n",
+                                "groupadd www\n",
+                                "usermod -a -G www ec2-user\n",
+                                "chown -R root:www /var/www\n",
+                                "chmod -R 2775 /var/www\n",
+                                "/bin/echo 'BJndagDmJj' | /bin/passwd cloud_user --stdin\n",
+                                "echo '<?php phpinfo(); ?>' > /var/www/html/phpinfo.php\n",
+                                "service httpd start\n",
+                                "chkconfig httpd on\n"
+                            ]
+                        ]
+                    }
+                },
+                "InstanceMonitoring": "true"
+            }
+        },
+        "AutoScalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "DependsOn": "LaunchConfiguration",
+            "Properties": {
+                "TargetGroupARNs": [
+                    {
+                        "Ref": "TargetGroup"
+                    }
+                ],
+                "LaunchConfigurationName": {
+                    "Ref": "LaunchConfiguration"
+                },
+                "MinSize": "2",
+                "MaxSize": "2",
+                "DesiredCapacity": "2",
+                "Cooldown": "300",
+                "HealthCheckGracePeriod": "300",
+                "HealthCheckType": "ELB",
+                "VPCZoneIdentifier": [
+                    {
+                        "Ref": "AppLayer1private"
+                    },
+                    {
+                        "Ref": "AppLayer2private"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "PropagateAtLaunch": "true",
+                        "Value": "instance-wordpress",
+                        "Key": "Name"
+                    }
+                ]
+            }
+        },
+        "BastionInstance": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "InstanceType": "t2.micro",
+                "ImageId": "ami-07e677d445d41baeb",
+                "IamInstanceProfile": {
+                    "Ref": "WebInstanceProfile"
+                },
+                "UserData": {
+                    "Fn::Base64": "#!/bin/bash -xe\n/bin/echo 'BJndagDmJj' | /bin/passwd cloud_user --stdin=\nyum update -y\nyum install mysql\nmkdir -p /home/cloud_user/.aws\ntouch /home/cloud_user/.aws/config\necho \"[default]\" >> /home/cloud_user/.aws/config\necho \"region = us-east-1\" >> /home/cloud_user/.aws/config\nchown cloud_user:cloud_user /home/cloud_user/.aws/config\nchmod 600 /home/cloud_user/.aws/config\n"
+                },
+                "NetworkInterfaces": [
+                    {
+                        "GroupSet": [
+                            {
+                                "Ref": "BastionSecurityGroup"
+                            }
+                        ],
+                        "AssociatePublicIpAddress": "true",
+                        "DeviceIndex": "0",
+                        "DeleteOnTermination": "true",
+                        "SubnetId": {
+                            "Ref": "DMZ1public"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Value": "bastion-host",
+                        "Key": "Name"
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "pubIpAddress1": {
+            "Description": "Public IP address of bastion instance",
+            "Value": {
+                "Fn::GetAtt": [
+                    "BastionInstance",
+                    "PublicIp"
+                ]
+            }
+        },
+        "privIpAddress1": {
+            "Description": "Private IP address of bastion instance",
+            "Value": {
+                "Fn::GetAtt": [
+                    "BastionInstance",
+                    "PrivateIp"
+                ]
+            }
+        },
+        "wordpressUrl": {
+            "Description": "URL of web site",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Fn::GetAtt": [
+                                "LoadBalancer",
+                                "DNSName"
+                            ]
+                        }
+                    ]
+                ]
+            }
+        }
+    }
+}

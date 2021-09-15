@@ -1,0 +1,8 @@
+# Managing Data in S3 with Versioning and Lifecycle Rules
+
+## Learning Objectives
+
+1. Enable Versioning on the Provided S3 Bucket
+1. Assign a Lifecycle Rule to Objects in the Logs Folder
+1. Assign a Lifecycle Rule to Objects in the Images Folder
+1. Add a Lifecycle Rule to Move the Older Log File to Glacier after 180 Days

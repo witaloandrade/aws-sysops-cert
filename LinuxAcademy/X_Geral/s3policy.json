@@ -1,0 +1,36 @@
+{
+    {
+        "Version": "2012-10-17",
+        "Id": "PutObjPolicy",
+        "Statement": [
+            {
+                "Sid": "DenyUnEncryptedObjectUploads",
+                "Effect": "Deny",
+                "Principal": {
+                    "AWS": "*"
+                },
+                "Action": "s3:PutObject",
+                "Resource": "arn:aws:s3:::bk10071991/*",
+                "Condition": {
+                    "StringNotEquals": {
+                        "s3:x-amz-server-side-encryption": [
+                            "AES256",
+                            "aws:kms"
+                        ]
+                    }
+                }
+            },
+            {
+                "Sid": "DenyUnEncryptedObjectUploads",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "s3:PutObject",
+                "Resource": "arn:aws:s3:::bk10071991/*",
+                "Condition": {
+                    "Null": {
+                        "s3:x-amz-server-side-encryption": "true"
+                    }
+                }
+            }
+        ]
+    }
